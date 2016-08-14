@@ -1,0 +1,19 @@
+# This configuration file is used by the 'req' command when a certificate is created for client 1.
+[ req ]
+default_bits            = 2048
+default_md              = sha256
+encrypt_key             = no
+prompt                  = no
+string_mask             = utf8only
+distinguished_name      = __CLIENTNAME__
+req_extensions          = req_cert_extensions
+
+[ __CLIENTNAME__ ]
+countryName             = NL
+localityName            = HomeTown
+organizationName        = My Organisation
+commonName              = __CLIENTNAME__
+
+[ req_cert_extensions ]
+nsCertType              = client
+subjectAltName          = email:hostmaster@example.com
