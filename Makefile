@@ -1,6 +1,9 @@
 build:
 	docker build -t openvpn .
 
+build-rpi:
+	docker build -t openvpn -f Dockerfile.rpi .
+
 clean:
 	docker rm -fv openvpn
 shell:

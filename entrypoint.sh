@@ -165,16 +165,16 @@ StartOpenVPN(){
 GetClientCfg(){
 	[ ! -d ${DATA}/client ] && ErrorMessage "Can not find client config, please use 'create-clientcert'."
 
-	[ ! -n ${SAVECFG} ] && ErrorMessage "You must specify 'SAVECFG' variable for using a volume mapped to your filesystem."
+	[ ! -n "${SAVECFG}" ] && ErrorMessage "You must specify 'SAVECFG' variable for using a volume mapped to your filesystem."
 
 	cp -R ${DATA}/client ${SAVECFG}
-	cp ${DATA}/ca/ca.crt ${SAVECFG}
+	cp ${DATA}/ca/ca.crt ${SAVECFG}/client
 
-	PUBLICIP="$(curl http://ipinfo.io/ip)"
+	PUBLICIP="$(curl -s http://ipinfo.io/ip)"
 
 	VPNSERVER=${VPNSERVER:=${PUBLICIP}}
 
-	sed -e "s/__VPNSERVER__/${VPNSERVER}/g" ${CONFDIR}/openvpn-client.cfg >${SAVECFG}/openvpn-client.cfg
+	sed -e "s/__VPNSERVER__/${VPNSERVER}/g" ${CONFDIR}/openvpn-client.conf >${SAVECFG}/client/openvpn-client.conf
 
 }
 

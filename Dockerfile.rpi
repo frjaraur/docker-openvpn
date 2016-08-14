@@ -7,7 +7,7 @@ MAINTAINER frjaraur@gmail.com
 ENV DATA /DATA
 ENV CONFDIR /CONF
 
-RUN addgroup -g 1000 openvpn && adduser -G openvpn -u 1000 -D openvpn
+RUN addgroup -g 1000 openvpn && adduser -H -G openvpn -u 1000 -D openvpn
 
 RUN apk --update --no-progress --no-cache add curl openvpn openssl && \
   mkdir -p ${DATA}/conf
