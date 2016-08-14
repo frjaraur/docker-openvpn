@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 ACTION="$(echo $1|tr '[A-Z]' '[a-z]')"
 
@@ -236,9 +236,11 @@ GetClientCfg(){
 
 	[ ! -n "${SAVECFG}" ] && ErrorMessage "You must specify 'SAVECFG' variable for using a volume mapped to your filesystem."
 
-	cp -R ${DATA}/clients/${CLIENTNAME} ${SAVECFG}
+	rm -rf ${SAVECFG}/client 2>/dev/null
+	
+	mkdir ${SAVECFG}/client 2>/dev/null
 
-	[ -d ${SAVECFG}/client ] && rm -rf ${SAVECFG}/client
+	cp -R ${DATA}/clients/${CLIENTNAME}/* ${SAVECFG}/client
 
 	cp ${DATA}/ca/ca.crt ${SAVECFG}/client
 
@@ -266,7 +268,7 @@ GetClientCfg(){
 case $ACTION in
 
   start)
-		StartOpenVPN
+    StartOpenVPN
   ;;
 
   create-ca)
@@ -283,16 +285,16 @@ case $ACTION in
   ;;
 
   create-dh)
-		[ ! -d ${DATA}/openvpn ] && mkdir -p ${DATA}/openvpn
-	  openssl dhparam -out ${DATA}/openvpn/dh2048.pem 2048
+    [ ! -d ${DATA}/openvpn ] && mkdir -p ${DATA}/openvpn
+    openssl dhparam -out ${DATA}/openvpn/dh2048.pem 2048
   ;;
 
-	get-clientcfg)
-		GetClientCfg
+  get-clientcfg)
+    GetClientCfg
   ;;
 
   help)
-		Help
+    Help
   ;;
 
 
