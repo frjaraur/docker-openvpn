@@ -5,21 +5,17 @@ default_md              = sha2
 encrypt_key             = yes                   # "no" is equivalent to -nodes
 prompt                  = no
 string_mask             = utf8only
-distinguished_name      = ca_distinguished_name     # root certificate name
+distinguished_name      = __CANAME__     # root certificate name
 req_extensions          = req_cert_extensions
-# attributes              = req_attributes
 
-[ ca_distinguished_name ]
+[ __CANAME__ ]
 # root certificate name
-countryName             = NL
-#stateOrProvinceName    = Utrecht
-localityName            = Hometown
-organizationName        = My Organisation
-#organizationalUnitName  = My Department Name
-commonName              = OpenVPN-CA
-#emailAddress            = hostmaster@example.org   # email in DN is deprecated, use subjectAltName
+countryName             = __COUNTRY__
+localityName            = __LOCATION__
+organizationName        = __ORGANIZATION__
+commonName              = __CANAME__
 
 [ req_cert_extensions ]
-# nsCertType              = server
 subjectAltName          = email:hostmaster@example.org
+
 

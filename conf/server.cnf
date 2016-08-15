@@ -9,12 +9,14 @@ distinguished_name      = __SERVERNAME__
 req_extensions          = req_cert_extensions
 
 [ __SERVERNAME__ ]
-countryName             = NL
-localityName            = HomeTown
-organizationName        = My Organisation
+countryName             = __COUNTRY__
+localityName            = __LOCATION__
+organizationName        = __ORGANIZATION__
 commonName              = __SERVERNAME__
 emailAddress            = hostmaster@example.org
 
 [ req_cert_extensions ]
 nsCertType              = server
 subjectAltName          = email:hostmaster@example.org
+
+

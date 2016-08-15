@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 ACTION="$(echo $1|tr '[A-Z]' '[a-z]')"
 
@@ -30,6 +30,8 @@ Help(){
 
 
 	printf "\n${GREEN}VARIABLES:\n"
+	printf "\t${RED}CANAME${GREEN} - (defaults to 'OPENVPN_SelfSigned'). Used for creating CA (generate-ca) and for sign server and client certificates.\n"
+	printf "\t${RED}LOCATION${GREEN} - (defaults to 'ES:HOME:HOME'). Location with the following notation 'COUNTRY:LOCATION:ORGANIZATION' needed for CA and Server and Client Certificates Generation.\n"
 	printf "\t${RED}PASSPHRASE${GREEN} - Used for creating CA (generate-ca) and for sign server and client certificates.\n"
 	printf "\tIf you want to be asked for passwrod, leave empty and run container in interactive mode (-ti).\n"
 	printf "\t${RED}DATA${GREEN} - (defaults to container's /DATA) This volume will be used for storing  openvpn runtime data and certificates.\n"
@@ -49,7 +51,7 @@ Help(){
 
 	printf "\n${GREEN}USAGE WORKFLOW (example will use volume 'openvpn'):\n"
 	printf "\t${RED}Create CA${GREEN} (for auto-sign certificates).\n"
-	printf "\t\t${CYAN}RUN: docker run --rm -e 'PASSPHRASE=YourSecuredPassphrase' -v openvpn:/DATA openvpn create-ca ${NC}\n"
+	printf "\t\t${CYAN}RUN: docker run --rm -e 'PASSPHRASE=YourSecuredPassphrase' -e 'CANAME=JustForOpenVPN' -v openvpn:/DATA openvpn create-ca ${NC}\n"
 	printf "\t${RED}Create Server Certificate${GREEN} (auto-signed by your own CA).\n"
 	printf "\t\t${CYAN}RUN: docker run --rm -e 'PASSPHRASE=YourSecuredPassphrase' -e 'SERVERNAME=MyOpenVPNServer'-v openvpn:/DATA openvpn create-servercert\n"
 	printf "\t${RED}Create Client's Certificates${GREEN} (auto-signed by your own CA).\n"
@@ -69,18 +71,40 @@ CreateCA(){
 
   touch ${DATA}/ca/index.txt
 
+  CANAME=${CANAME:=OPENVPN_SelfSigned}
+
+  
+  LOCATION=${LOCATION:=ES:HOME:HOME}
+
+  #COUNTRY:LOCATION:ORGANIZATION
+  COUNTRY="$(echo ${LOCATION}|cut -d ":" -f1)"
+  LOCATION="$(echo ${LOCATION}|cut -d ":" -f2)"
+  ORGANIZATION="$(echo ${LOCATION}|cut -d ":" -f3)"
+
+  [ ! -d ${DATA}/conf ] && mkdir -p ${DATA}/conf
+
+  sed -e "s/__CANAME__/${CANAME}/g" ${CONFDIR}/ca.cnf >${DATA}/conf/ca.cnf
+
+  
+  sed -i "s/__COUNTRY__/${COUNTRY}/g" ${DATA}/conf/ca.cnf
+  sed -i "s/__LOCATION__/${LOCATION}/g" ${DATA}/conf/ca.cnf
+  sed -i "s/__ORGANIZATION__/${ORGANIZATION}/g" ${DATA}/conf/ca.cnf
+
+
   [ -n "${PASSPHRASE}" ]  && PASSPOPTS="-passout pass:${PASSPHRASE} "
 
   openssl req -new \
-    -config ${CONFDIR}/ca.cnf  \
+    -config ${DATA}/conf/ca.cnf  \
     ${PASSPOPTS} \
     -keyout ${DATA}/ca/ca.key \
     -out ${DATA}/ca/ca.req
 
   [ -n "${PASSPHRASE}" ]  && PASSPOPTS="-passin pass:${PASSPHRASE}"
 
+  cp ${CONFDIR}/ca-sign.cnf ${DATA}/conf/ca-sign.cnf
+
   openssl ca -batch \
-    -config ${CONFDIR}/ca-sign.cnf  \
+    -config ${DATA}/conf/ca-sign.cnf  \
     ${PASSPOPTS} \
     -extensions X509_ca \
     -days 3650  \
@@ -93,14 +117,29 @@ CreateCA(){
 
   chmod 444 ${DATA}/ca/ca.crt
 
-	rm -f ${DATA}/ca/ca.req
+  rm -f ${DATA}/ca/ca.req
 }
 
 CreateServerCert(){
 
   SERVERNAME=${SERVERNAME:=server}
 
+  LOCATION=${LOCATION:=ES:HOME:HOME}
+
+  #COUNTRY:LOCATION:ORGANIZATION
+  COUNTRY="$(echo ${LOCATION}|cut -d ":" -f1)"
+  LOCATION="$(echo ${LOCATION}|cut -d ":" -f2)"
+  ORGANIZATION="$(echo ${LOCATION}|cut -d ":" -f3)"
+
+  [ ! -d ${DATA}/conf ] && mkdir -p ${DATA}/conf
+
   sed -e "s/__SERVERNAME__/${SERVERNAME}/g" ${CONFDIR}/server.cnf >${DATA}/conf/server.cnf
+
+
+  sed -i "s/__COUNTRY__/${COUNTRY}/g" ${DATA}/conf/server.cnf
+  sed -i "s/__LOCATION__/${LOCATION}/g" ${DATA}/conf/server.cnf
+  sed -i "s/__ORGANIZATION__/${ORGANIZATION}/g" ${DATA}/conf/server.cnf
+
 
 
   [ ! -d ${DATA}/ca ] && ErrorMessage "Can not find ca.crt, please use 'create-ca' or add your ca.crt in ${DATA}/ca dir."
@@ -112,7 +151,7 @@ CreateServerCert(){
   [ -n "${PASSPHRASE}" ]  && PASSPOPTS="-passin pass:${PASSPHRASE}"
 
   openssl req -new \
-    -config ${CONFDIR}/server.cnf \
+    -config ${DATA}/conf/server.cnf \
     ${PASSPOPTS} \
     -keyout ${DATA}/server/server.key \
     -out ${DATA}/server/server.req
@@ -120,7 +159,7 @@ CreateServerCert(){
   chmod 400 ${DATA}/server/server.key
 
   openssl ca  -batch \
-    -config ${CONFDIR}/ca-sign.cnf \
+    -config ${DATA}/conf/ca-sign.cnf \
     -extensions X509_server \
     ${PASSPOPTS} \
     -in ${DATA}/server/server.req \
@@ -128,7 +167,7 @@ CreateServerCert(){
 
   chmod 444 ${DATA}/server/server.crt
 
-	rm -f ${DATA}/server/server.req
+  rm -f ${DATA}/server/server.req
 
 }
 
@@ -140,14 +179,28 @@ CreateClientCert(){
 
 
   CLIENTNAME=${CLIENTNAME:=client}
+  LOCATION=${LOCATION:=ES:HOME:HOME}
+
+  #COUNTRY:LOCATION:ORGANIZATION
+  COUNTRY="$(echo ${LOCATION}|cut -d ":" -f1)"
+  LOCATION="$(echo ${LOCATION}|cut -d ":" -f2)"
+  ORGANIZATION="$(echo ${LOCATION}|cut -d ":" -f3)"
+
+  [ ! -d ${DATA}/conf ] && mkdir -p ${DATA}/conf
 
   sed -e "s/__CLIENTNAME__/${CLIENTNAME}/g" ${CONFDIR}/client.cnf >${DATA}/conf/client.cnf
+
+  sed -i "s/__COUNTRY__/${COUNTRY}/g" ${DATA}/conf/client.cnf
+  sed -i "s/__LOCATION__/${LOCATION}/g" ${DATA}/conf/client.cnf
+  sed -i "s/__ORGANIZATION__/${ORGANIZATION}/g" ${DATA}/conf/client.cnf
+
+
 
 
   [ -n "${PASSPHRASE}" ]  && PASSPOPTS="-passin pass:${PASSPHRASE}"
 
   openssl req -new \
-    -config ${CONFDIR}/client.cnf \
+    -config ${DATA}/conf/client.cnf \
     ${PASSPOPTS} \
     -keyout ${DATA}/clients/${CLIENTNAME}/client.key \
     -out ${DATA}/clients/${CLIENTNAME}/client.req
@@ -155,25 +208,25 @@ CreateClientCert(){
   chmod 400 ${DATA}/clients/${CLIENTNAME}/client.key
 
   openssl ca  -batch \
-    -config ${CONFDIR}/ca-sign.cnf \
+    -config ${DATA}/conf/ca-sign.cnf \
     ${PASSPOPTS} \
     -in ${DATA}/clients/${CLIENTNAME}/client.req \
     -out ${DATA}/clients/${CLIENTNAME}/client.crt
 
   chmod 444 ${DATA}/clients/${CLIENTNAME}/client.crt
 
-	rm -f ${DATA}/clients/${CLIENTNAME}/client.req
+  rm -f ${DATA}/clients/${CLIENTNAME}/client.req
 
-	rm -f ${DATA}/conf/client.cnf
+  rm -f ${DATA}/conf/client.cnf
 }
 
 CreateDH(){
 
   [ ! -d ${DATA}/ca ] && ErrorMessage "Can not find ca.crt, please use 'create-ca' or add your ca.crt in ${DATA}/ca dir."
 
-  [ ! -d ${DATA}/server ] && mkdir -p ${DATA}/server
+  [ ! -d ${DATA}/openvpn ] && mkdir -p ${DATA}/openvpn
 
-  openssl dhparam -out ${DATA}/server/dh2048.pem 2048
+  openssl dhparam -rand /dev/urandom -out ${DATA}/openvpn/dh2048.pem 2048
 
 }
 
@@ -192,7 +245,7 @@ StartOpenVPN(){
 		[ ! -f ${file} ] && ErrorMessage "Can not find ${file}, OpenVPN Server can not start."
 	done
 
-	[ ! -f ${DATA}/server/dh2048.pem ] && CreateDH
+	[ ! -f ${DATA}/openvpn/dh2048.pem ] && CreateDH
 
 	mkdir -p /dev/net
 
@@ -217,8 +270,9 @@ StartOpenVPN(){
 		for net in ${NETWORKS}
 		do
 			[ $(echo ${net}|grep -c "/") -ne 1 ] && InfoMessage "Can not add ${net} route, please use CIDR notation NETIP/MASK." && continue
-			route="$(ipcalc ${net}|awk '/Address/ || /Netmask/ { printf "%s ", $2 }')"
-			push "route ${route}" >>${DATA}/conf/openvpn.conf
+			IpCalc "$net"
+			echo "push \"route ${route}\"" >>${DATA}/conf/openvpn.conf
+			nets=$(( ${nets} + 1 ))
 		done
 
 		[ ${nets} -eq 0 ] && ErrorMessage "At least you must add one network to route or you will be living in an island ;P ."
@@ -230,6 +284,20 @@ StartOpenVPN(){
 
 }
 
+IpCalc(){
+	route=""
+	ipcalc -v 2>/dev/null && route="$(ipcalc ${net}|awk '/Address/ || /Netmask/ { printf "%s ", $2 }')"  && return
+
+	# Raspberry busybox version
+	#  ipcalc -nm 192.168.1.0/24
+	#NETMASK=255.255.255.0
+	#NETWORK=192.168.1.0
+	network="$(ipcalc -n ${net}|cut -d "=" -f2)"
+	netmask="$(ipcalc -m ${net}|cut -d "=" -f2)"
+	route="$(echo ${network} ${netmask})"
+
+
+}
 
 GetClientCfg(){
 	[ ! -d ${DATA}/clients/${CLIENTNAME} ] && ErrorMessage "Can not find client config, please use 'create-clientcert'."
@@ -285,8 +353,7 @@ case $ACTION in
   ;;
 
   create-dh)
-    [ ! -d ${DATA}/openvpn ] && mkdir -p ${DATA}/openvpn
-    openssl dhparam -out ${DATA}/openvpn/dh2048.pem 2048
+    CreateDH
   ;;
 
   get-clientcfg)

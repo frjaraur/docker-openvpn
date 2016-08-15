@@ -9,9 +9,9 @@ distinguished_name      = __CLIENTNAME__
 req_extensions          = req_cert_extensions
 
 [ __CLIENTNAME__ ]
-countryName             = NL
-localityName            = HomeTown
-organizationName        = My Organisation
+countryName             = __COUNTRY__
+localityName            = __LOCATION__
+organizationName        = __ORGANIZATION__
 commonName              = __CLIENTNAME__
 
 [ req_cert_extensions ]
